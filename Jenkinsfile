@@ -1,57 +1,69 @@
-pipeline{
+#!/usr/bin/env groovy
+import hudson.model.*
+import hudson.EnvVars
+import groovy.json.JsonSlurperClassic
+import groovy.json.JsonBuilder
+import groovy.json.JsonOutput
+import java.net.URL
+pipeline
+{
     agent any
-    environment {
-        name = 'dev'
+    tools
+    {
+        maven 'maven'
+        jdk 'Amazon Corretto'
     }
-    parameters{
-        string(name:'Person',defaultValue:'Dev')
-    }
-    stages{
-        stage('Test'){
-            steps{
-                echo 'Testing Code'
-                sh 'echo "${name}"'
-                sh 'echo "${Person}"'
+    stages
+    {
+        stage ('Build')
+        {
+            steps
+            {
+                echo "Creating New Build"
+                sh 'mvn clean install'
+
             }
         }
-        stage('Build'){
-            input{
-                message "Should we continue?"
-                ok "Yes we should"
-                
-            }
-            steps{
-                echo 'Building Code'
-            }
-        }
-        stage('Deploy on Test'){
-            steps{
-                echo 'Deployment on test'
+        stage ('convert')
+        {
+            steps
+            {
+               echo "${env.JOB_NAME}"
+               sh """#!/bin/bash
+               echo "${env.JOB_NAME}" | cut -d/ -f1
+
+
+               """
             }
         }
-        stage('Deploy on Prod'){
-            steps{
-                echo 'Deployment on prod'
+        stage ('Creating and Pushing Docker Image to registry')
+        {
+            steps
+            {
+                script
+                {
+                    def customImage = docker.build("intregrated.azurecr.io/${env.JOB_NAME.toLowerCase()}:${env.BUILD_NUMBER}")
+                    sh 'docker login intregrated.azurecr.io -u  -p '
+                    customImage.push("${env.BUILD_NUMBER}")
+                    customImage.push("latest")
+                    //def jobUserId, jobUserName
+                    //then somewhere
+                    wrap([$class: 'BuildUser']) {
+                        env['MYUSER'] = "${BUILD_USER_ID}"
+
+                    }
+
+                }
             }
         }
-        stage('Build with JDK 8') {
-            tools {
-                jdk 'Amazon Corretto' // Name of the JDK as configured in Global Tool Configuration
-            }
-            steps {
-                sh 'java -version'
-                // Add build steps here
+        stage ('Deploying on UAT')
+        {
+            steps
+            {
+                //sh 'ansible-playbook /opt/ansible/playbook/deployment.yaml'
+                sh '/opt/ansible/playbook/deploy.sh'
             }
         }
 
-        stage('Build with JDK 11') {
-            tools {
-                jdk 'Java 11' // Name of the JDK as configured in Global Tool Configuration
-            }
-            steps {
-                sh 'java -version'
-                // Add build steps here
-            }
-        }
     }
 }
