@@ -3,23 +3,23 @@ pipeline{
     environment {
         name = 'dev'
     }
-    parameters{
-        string(name:'Person',defaultValue:'Dev')
-    }
+    // parameters{
+    //     string(name:'Person',defaultValue:'Dev')
+    // }
     stages{
         stage('Test'){
             steps{
                 echo 'Testing Code'
                 sh 'echo "${name}"'
-                sh 'echo "${Person}"'
+                // sh 'echo "${Person}"'
             }
         }
         stage('Build'){
-            input{
-                message "Should we continue?"
-                ok "Yes we should"
+            // input{
+            //     message "Should we continue?"
+            //     ok "Yes we should"
                 
-            }
+            // }
             steps{
                 echo 'Building Code'
             }
